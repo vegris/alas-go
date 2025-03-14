@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 // Token represents the decoded token structure.
@@ -20,21 +22,16 @@ type Token struct {
 	ExpireAt  int64     `json:"expire_at"`
 }
 
-// secretKey is the AES256 secret key used for encryption/decryption.
-var secretKey []byte
-
-// Init initializes the package by loading the secret key from the environment.
+// Init initializes the package.
 func Init() error {
-	key := os.Getenv("TOKEN_SECRET")
-	if key == "" {
-		return errors.New("TOKEN_SECRET environment variable is not set")
-	}
-
-    token, err := base64.StdEncoding.DecodeString(key)
-    if err != nil {
-        return fmt.Errorf("failed to decode TOKEN_SECRET: %w", err)
+    if err := loadSecret(); err != nil {
+        return err
     }
-    secretKey = token
+
+    if err := compileSchema(); err != nil {
+        return err
+    }
+
     return nil
 }
 
@@ -92,11 +89,70 @@ func Decode(encodedToken string) (*Token, error) {
 	plaintext := make([]byte, len(ciphertext))
 	stream.XORKeyStream(plaintext, ciphertext)
 
-	// Parse the JSON into a Token struct
+    // Parse into generic interface{} for schema validation
+	var tokenInstance any
+	if err := json.Unmarshal(plaintext, &tokenInstance); err != nil {
+		return nil, fmt.Errorf("invalid JSON: %w", err)
+	}
+
+    // Validate JSON against the schema
+	if err := schema.Validate(tokenInstance); err != nil {
+		return nil, fmt.Errorf("invalid token JSON: %w", err)
+	}
+
+	// Parse JSON into a Token struct
 	var token Token
 	if err := json.Unmarshal(plaintext, &token); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal token: %w", err)
 	}
 
 	return &token, nil
+}
+
+// secretKey is the AES256 secret key used for encryption/decryption.
+var secretKey []byte
+
+func loadSecret() error {
+	key := os.Getenv("TOKEN_SECRET")
+	if key == "" {
+		return errors.New("TOKEN_SECRET environment variable is not set")
+	}
+
+    token, err := base64.StdEncoding.DecodeString(key)
+    if err != nil {
+        return fmt.Errorf("failed to decode TOKEN_SECRET: %w", err)
+    }
+    secretKey = token
+    return nil
+}
+
+const schemaName = "token.json"
+//go:embed token.json
+var schemaFS embed.FS
+var schema *jsonschema.Schema
+
+func compileSchema() error {
+	// Read the embedded schema file
+	schemaFile, err := schemaFS.Open(schemaName)
+	if err != nil {
+		return fmt.Errorf("Failed to read embedded schema: %v", err)
+	}
+
+    tokenSchema, err := jsonschema.UnmarshalJSON(schemaFile)
+	if err != nil {
+		return fmt.Errorf("Failed to unmarshal embedded schema: %v", err)
+	}
+
+	// Compile the schema
+	compiler := jsonschema.NewCompiler()
+	if err := compiler.AddResource(schemaName, tokenSchema); err != nil {
+		return fmt.Errorf("Failed to add schema to compiler: %v", err)
+	}
+
+	schema, err = compiler.Compile(schemaName)
+	if err != nil {
+		return fmt.Errorf("Failed to compile schema: %v", err)
+	}
+
+    return nil
 }
