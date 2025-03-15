@@ -7,12 +7,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vegris/alas-go/kiwi/config"
 	"github.com/vegris/alas-go/kiwi/events"
 	"github.com/vegris/alas-go/kiwi/handlers"
 	"github.com/vegris/alas-go/kiwi/token"
 )
 
 func main() {
+    config.Initialize()
+
 	if err := token.Init(); err != nil {
 		log.Fatalf("Failed to initialize token package: %v", err)
 	}
@@ -23,10 +26,6 @@ func main() {
 		log.Fatalf("Failed to initialize events package: %v", err)
 	}
 
-	if err := handlers.Init(); err != nil {
-		log.Fatalf("Failed to initialize handlers package: %v", err)
-	}
-	
 	// Register the trackHandler function to handle requests at /api/v1/track
 	http.HandleFunc("/api/v1/track", handlers.TrackHandler)
 

@@ -1,11 +1,15 @@
+SHELL := /bin/bash
+
 .PHONY: build run
+
+SETUP_ENV := set -a && source .env && set +a
 
 build:
 	go build
 
 run: build
-	env $$(cat .env | xargs) ./kiwi
+	$(SETUP_ENV) && ./kiwi
 
 test:
-	env $$(cat .env | xargs) go test ./...
+	$(SETUP_ENV) && go test ./...
 

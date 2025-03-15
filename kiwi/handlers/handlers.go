@@ -5,30 +5,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"slices"
 
+	"github.com/vegris/alas-go/kiwi/config"
 	"github.com/vegris/alas-go/kiwi/events"
 	"github.com/vegris/alas-go/kiwi/token"
 )
-
-var allowedSources []string
-
-func Init() error {
-    envValue := os.Getenv("ALLOWED_SOURCES")
-    if envValue == "" {
-        return errors.New("ALLOWED_SOURCES environment variable is not set")
-    }
-
-    err := json.Unmarshal([]byte(envValue), &allowedSources)
-    if err != nil {
-        return fmt.Errorf("Failed to parse ALLOWED_SOURCES: %v", err)
-    }
-    return nil
-}
 
 type response struct {
 	Status  string `json:"status"`
@@ -134,7 +118,7 @@ func checkSignature(signature string, body []byte, event *events.MobileEvent) er
 }
 
 func checkSource(event *events.MobileEvent) error {
-    if !slices.Contains(allowedSources, event.EventSource) {
+    if !slices.Contains(config.Config.AllowedSources, event.EventSource) {
         return ErrSourceIsNotAllowed
     }
     return nil

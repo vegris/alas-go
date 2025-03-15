@@ -11,23 +11,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/vegris/alas-go/kiwi/config"
 )
 
 func TestMain(m *testing.M) {
-	Init() // Initialize the package
+    config.Initialize()
+	Init()
 	code := m.Run()
 	os.Exit(code)
-}
-
-func TestMissingSecretKey(t *testing.T) {
-	// Temporarily unset the secret key
-	oldSecret := os.Getenv("TOKEN_SECRET")
-	os.Unsetenv("TOKEN_SECRET")
-	defer os.Setenv("TOKEN_SECRET", oldSecret)
-
-	// Reinitialize the package
-	err := Init()
-	assert.Error(t, err, "Init should return an error when TOKEN_SECRET is not set")
 }
 
 func TestEncodeDecode(t *testing.T) {
@@ -79,7 +70,7 @@ func TestDecodeInvalidJSON(t *testing.T) {
 	iv := make([]byte, aes.BlockSize)
 	rand.Read(iv)
 
-	block, err := aes.NewCipher(secretKey)
+	block, err := aes.NewCipher(config.Config.TokenSecret)
 	assert.NoError(t, err, "Failed to create cipher")
 
 	stream := cipher.NewCTR(block, iv)
