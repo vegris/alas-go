@@ -4,15 +4,14 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
-	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/vegris/alas-go/kiwi/config"
+	"github.com/vegris/alas-go/kiwi/schemas"
 )
 
 // Token represents the decoded token structure.
@@ -20,37 +19,6 @@ type Token struct {
 	SessionID uuid.UUID `json:"session_id"`
 	DeviceID  uuid.UUID `json:"device_id"`
 	ExpireAt  int64     `json:"expire_at"`
-}
-
-const schemaName = "token.json"
-//go:embed token.json
-var schemaFS embed.FS
-var schema *jsonschema.Schema
-
-func Init() error {
-	// Read the embedded schema file
-	schemaFile, err := schemaFS.Open(schemaName)
-	if err != nil {
-		return fmt.Errorf("Failed to read embedded schema: %v", err)
-	}
-
-    tokenSchema, err := jsonschema.UnmarshalJSON(schemaFile)
-	if err != nil {
-		return fmt.Errorf("Failed to unmarshal embedded schema: %v", err)
-	}
-
-	// Compile the schema
-	compiler := jsonschema.NewCompiler()
-	if err := compiler.AddResource(schemaName, tokenSchema); err != nil {
-		return fmt.Errorf("Failed to add schema to compiler: %v", err)
-	}
-
-	schema, err = compiler.Compile(schemaName)
-	if err != nil {
-		return fmt.Errorf("Failed to compile schema: %v", err)
-	}
-
-    return nil
 }
 
 // Encode encodes a Token into a Base64-encoded encrypted string.
@@ -114,7 +82,7 @@ func Decode(encodedToken string) (*Token, error) {
 	}
 
     // Validate JSON against the schema
-	if err := schema.Validate(tokenInstance); err != nil {
+	if err := schemas.TokenSchema.Validate(tokenInstance); err != nil {
 		return nil, fmt.Errorf("invalid token JSON: %w", err)
 	}
 

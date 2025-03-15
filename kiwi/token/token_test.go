@@ -12,11 +12,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/vegris/alas-go/kiwi/config"
+	"github.com/vegris/alas-go/kiwi/schemas"
 )
 
 func TestMain(m *testing.M) {
     config.Initialize()
-	Init()
+    schemas.Initialize()
 	code := m.Run()
 	os.Exit(code)
 }

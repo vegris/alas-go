@@ -1,12 +1,11 @@
 package events
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/santhosh-tekuri/jsonschema/v6"
+	"github.com/vegris/alas-go/kiwi/schemas"
 )
 
 // MobileEvent represents the structure of the mobile event
@@ -52,37 +51,6 @@ type networkInfo struct {
 	Carrier        string `json:"carrier"`
 }
 
-const schemaName = "mobile_event.json"
-
-//go:embed mobile_event.json
-var schemaFS embed.FS
-var schema *jsonschema.Schema
-
-// TODO: extract schema compilation into generic function
-func Init() error {
-	schemaFile, err := schemaFS.Open(schemaName)
-	if err != nil {
-		return fmt.Errorf("Failed to read embedded schema: %v", err)
-	}
-
-	tokenSchema, err := jsonschema.UnmarshalJSON(schemaFile)
-	if err != nil {
-		return fmt.Errorf("Failed to unmarshal embedded schema: %v", err)
-	}
-
-	compiler := jsonschema.NewCompiler()
-	if err := compiler.AddResource(schemaName, tokenSchema); err != nil {
-		return fmt.Errorf("Failed to add schema to compiler: %v", err)
-	}
-
-	schema, err = compiler.Compile(schemaName)
-	if err != nil {
-		return fmt.Errorf("Failed to compile schema: %v", err)
-	}
-
-	return nil
-}
-
 func ParseMobileEvent(body []byte) (*MobileEvent, error) {
 	// Parse into generic interface{} for schema validation
 	var eventInstance any
@@ -91,7 +59,7 @@ func ParseMobileEvent(body []byte) (*MobileEvent, error) {
 	}
 
 	// Validate JSON against the schema
-	if err := schema.Validate(eventInstance); err != nil {
+	if err := schemas.MobileEventSchema.Validate(eventInstance); err != nil {
 		return nil, fmt.Errorf("invalid mobile event JSON: %w", err)
 	}
 
