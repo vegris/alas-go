@@ -13,7 +13,6 @@ import (
 )
 
 func main() {
-	// Initialize the token package
 	if err := token.Init(); err != nil {
 		log.Fatalf("Failed to initialize token package: %v", err)
 	}
@@ -22,6 +21,10 @@ func main() {
 
 	if err := events.Init(); err != nil {
 		log.Fatalf("Failed to initialize events package: %v", err)
+	}
+
+	if err := handlers.Init(); err != nil {
+		log.Fatalf("Failed to initialize handlers package: %v", err)
 	}
 	
 	// Register the trackHandler function to handle requests at /api/v1/track
