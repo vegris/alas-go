@@ -5,20 +5,25 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type App struct {
 	HTTPRoutes map[string]http.HandlerFunc
 }
 
+var Redis *redis.Client
 var httpServer *http.Server
 
 func Start(app *App) {
+	startRedis()
 	startHTTPServer(app)
 }
 
 func Shutdown() {
-    shutdownHTTPServer()
+	shutdownHTTPServer()
+	shutdownRedis()
 }
 
 func startHTTPServer(app *App) {
@@ -45,4 +50,24 @@ func shutdownHTTPServer() {
 	} else {
 		log.Printf("HTTP server shutdown error: %v", err)
 	}
+}
+
+func startRedis() {
+	Redis = redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	if err := Redis.Ping(context.Background()).Err(); err == nil {
+		log.Println("Redis initialized")
+	} else {
+        log.Fatalf("Redis initialization failed: %v", err)
+	}
+}
+
+func shutdownRedis() {
+    if err := Redis.Close(); err == nil {
+        log.Println("Redis client successfully closed!")
+    } else {
+        log.Printf("Failed to close Redis client: %v", err)
+    }
 }

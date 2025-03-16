@@ -1,8 +1,14 @@
 SHELL := /bin/bash
 
-.PHONY: build run
+.PHONY: up down build run
 
 SETUP_ENV := set -a && source .env && set +a
+
+up:
+	docker compose up --wait
+
+down:
+	docker compose down
 
 build:
 	go build
