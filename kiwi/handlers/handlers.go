@@ -20,13 +20,13 @@ type response struct {
 }
 
 var (
-	ErrNoHash             = errors.New("x-hash header is not set")
-	ErrHashError          = errors.New("Computed hash did not match")
-	ErrNoToken            = errors.New("x-goblin header is not set")
-	ErrBadToken           = errors.New("Orc token is invalid")
-	ErrReadError          = errors.New("Failed to read request")
-	ErrEventError         = errors.New("Event is malformed")
-	ErrSourceIsNotAllowed = errors.New("Source is not allowed")
+	errNoHash             = errors.New("x-hash header is not set")
+	errHashError          = errors.New("Computed hash did not match")
+	errNoToken            = errors.New("x-goblin header is not set")
+	errBadToken           = errors.New("Orc token is invalid")
+	errReadError          = errors.New("Failed to read request")
+	errEventError         = errors.New("Event is malformed")
+	errSourceIsNotAllowed = errors.New("Source is not allowed")
 )
 
 func TrackHandler(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,7 @@ func readOrcToken(r *http.Request) (*token.Token, error) {
 	// token.Decode can work with empty strings
 	t, err := token.Decode(header)
 	if err != nil {
-		return nil, ErrBadToken
+		return nil, errBadToken
 	}
 	return t, nil
 }
@@ -84,7 +84,7 @@ func readOrcToken(r *http.Request) (*token.Token, error) {
 func readSignature(r *http.Request) (string, error) {
 	signature := r.Header.Get("x-hash")
 	if signature == "" {
-		return "", ErrNoHash
+		return "", errNoHash
 	}
 	return signature, nil
 }
@@ -92,7 +92,7 @@ func readSignature(r *http.Request) (string, error) {
 func readBody(r *http.Request) ([]byte, error) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, ErrReadError
+		return nil, errReadError
 	}
 	defer r.Body.Close()
 	return body, nil
@@ -101,7 +101,7 @@ func readBody(r *http.Request) ([]byte, error) {
 func parseEvent(body []byte) (*events.MobileEvent, error) {
 	event, err := events.ParseMobileEvent(body)
 	if err != nil {
-		return nil, ErrEventError
+		return nil, errEventError
 	}
 	return event, nil
 }
@@ -112,14 +112,14 @@ func checkSignature(signature string, body []byte, event *events.MobileEvent) er
 	hashHexed := hex.EncodeToString(hash[:])
 
 	if signature != hashHexed {
-		return ErrHashError
+		return errHashError
 	}
 	return nil
 }
 
 func checkSource(event *events.MobileEvent) error {
     if !slices.Contains(config.Config.AllowedSources, event.EventSource) {
-        return ErrSourceIsNotAllowed
+        return errSourceIsNotAllowed
     }
     return nil
 }
