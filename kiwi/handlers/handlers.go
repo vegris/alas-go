@@ -1,22 +1,34 @@
 package handlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"slices"
+	"strconv"
+	"time"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/vegris/alas-go/kiwi/app"
 	"github.com/vegris/alas-go/kiwi/config"
 	"github.com/vegris/alas-go/kiwi/events"
 	"github.com/vegris/alas-go/kiwi/token"
 )
 
-type response struct {
+type okResponse struct {
+	Status   string `json:"status"`
+	Token    string `json:"token"`
+	TokenTTL int64  `json:"ttl"`
+}
+
+type errResponse struct {
 	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
+	Message string `json:"message"`
 }
 
 var (
@@ -27,13 +39,15 @@ var (
 	errReadError          = errors.New("Failed to read request")
 	errEventError         = errors.New("Event is malformed")
 	errSourceIsNotAllowed = errors.New("Source is not allowed")
+	errNoFreshToken       = errors.New("Failed to refresh Orc token")
+	errInternalError      = errors.New("Internal server error")
 )
 
 func TrackHandler(w http.ResponseWriter, r *http.Request) {
 	// Response will always be JSON
 	w.Header().Set("Content-Type", "application/json")
 
-	_, err := readOrcToken(r)
+	oldToken, err := readOrcToken(r)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -67,7 +81,15 @@ func TrackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(response{Status: "OK"})
+	freshToken, tokenTTL, err := refreshToken(oldToken)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	// TODO: produce event to Kafka
+
+	json.NewEncoder(w).Encode(okResponse{Status: "OK", Token: freshToken, TokenTTL: tokenTTL})
 }
 
 func readOrcToken(r *http.Request) (*token.Token, error) {
@@ -118,14 +140,41 @@ func checkSignature(signature string, body []byte, event *events.MobileEvent) er
 }
 
 func checkSource(event *events.MobileEvent) error {
-    if !slices.Contains(config.Config.AllowedSources, event.EventSource) {
-        return errSourceIsNotAllowed
-    }
-    return nil
+	if !slices.Contains(config.Config.AllowedSources, event.EventSource) {
+		return errSourceIsNotAllowed
+	}
+	return nil
+}
+
+func refreshToken(token *token.Token) (string, int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	now := time.Now().Unix()
+	minTokenTTL := now + int64(time.Minute)
+	maxTokenTTL := now + int64(time.Minute)*2
+
+	zrange := &redis.ZRangeBy{Min: strconv.FormatInt(minTokenTTL, 10), Max: strconv.FormatInt(maxTokenTTL, 10), Offset: 0, Count: 1}
+
+	vals, err := app.Redis.ZRangeByScoreWithScores(ctx, token.SessionID.String(), zrange).Result()
+	if err != nil {
+		log.Printf("Error accessing Redis: %v", err)
+		return "", 0, errInternalError
+	}
+	if len(vals) == 0 {
+		return "", 0, errNoFreshToken
+	}
+
+	encodedToken := vals[0].Member.(string)
+	tokenExpireAt := int64(vals[0].Score)
+
+	ttl := tokenExpireAt - now
+
+	return encodedToken, ttl, nil
 }
 
 func handleError(w http.ResponseWriter, err error) {
-	json.NewEncoder(w).Encode(response{
+	json.NewEncoder(w).Encode(errResponse{
 		Status:  "ERROR",
 		Message: err.Error(),
 	})
