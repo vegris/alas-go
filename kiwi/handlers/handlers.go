@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/segmentio/kafka-go"
 	"github.com/vegris/alas-go/kiwi/app"
 	"github.com/vegris/alas-go/kiwi/config"
 	"github.com/vegris/alas-go/kiwi/events"
@@ -87,7 +88,10 @@ func TrackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: produce event to Kafka
+    if err := produceKeepAliveEvent(event, oldToken); err != nil {
+       handleError(w, err) 
+       return
+    }
 
 	json.NewEncoder(w).Encode(okResponse{Status: "OK", Token: freshToken, TokenTTL: tokenTTL})
 }
@@ -171,6 +175,27 @@ func refreshToken(token *token.Token) (string, int64, error) {
 	ttl := tokenExpireAt - now
 
 	return encodedToken, ttl, nil
+}
+
+func produceKeepAliveEvent(mobileEvent *events.MobileEvent, token *token.Token) error {
+    outEvent := events.BuildKeepAliveEvent(mobileEvent, token)
+    outMessage, err := json.Marshal(outEvent)
+    if err != nil {
+        // This should never happen
+        log.Fatalf("Encoding KeepAlive event to JSON failed: %v", err)
+    }
+
+    message := kafka.Message{
+        Topic: app.KeepAliveTopic,
+        Value: outMessage,
+    }
+
+    if err := app.Kafka.WriteMessages(context.Background(), message); err != nil {
+		log.Printf("Error producing to Redis: %v", err)
+        return errInternalError
+    }
+
+    return nil
 }
 
 func handleError(w http.ResponseWriter, err error) {

@@ -18,6 +18,8 @@ var Redis *redis.Client
 var Kafka *kafka.Writer
 var httpServer *http.Server
 
+const KeepAliveTopic = "keep-alive"
+
 func Start(app *App) {
 	startRedis()
 	startKafka()
@@ -86,7 +88,7 @@ func startKafka() {
 	defer conn.Close()
 
     // Create needed topics
-    topicsToCreate := [...]string{"keep-alive"}
+    topicsToCreate := [...]string{KeepAliveTopic}
     topicConfigs := make([]kafka.TopicConfig, 0, len(topicsToCreate))
 
     for _, topicName := range topicsToCreate {
@@ -119,7 +121,7 @@ func startKafka() {
     }
     log.Printf("Kafka initialized, topics in cluster: %v", topics)
     
-	Kafka = &kafka.Writer{Addr: kafka.TCP(kafkaAddr)}
+	Kafka = &kafka.Writer{Addr: kafka.TCP(kafkaAddr), Async: true}
 }
 
 func shutdownKafka() {
