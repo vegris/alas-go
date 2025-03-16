@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,19 +12,22 @@ import (
 )
 
 type App struct {
-	HTTPRoutes map[string]http.HandlerFunc
+	HTTPRoutes    map[string]http.HandlerFunc
+	KafkaHandlers map[string]func([]byte)
 }
 
 var Redis *redis.Client
 var Kafka *kafka.Writer
+var kafkaConsumers []*kafka.Reader
 var httpServer *http.Server
 
 const EventsTopic = "kiwi-events"
 const KeepAliveTopic = "keep-alive"
+const OrcTokensTopic = "orc-tokens"
 
 func Start(app *App) {
 	startRedis()
-	startKafka()
+	startKafka(app)
 	startHTTPServer(app)
 }
 
@@ -79,56 +83,109 @@ func shutdownRedis() {
 	}
 }
 
-func startKafka() {
-	const kafkaAddr = "localhost:9092"
+const kafkaAddr = "localhost:9092"
+const kafkaConsumerGroup = "kiwi"
 
+func startKafka(app *App) {
+	kafkaCreateTopics()
+	kafkaStartConsumers(app)
+	Kafka = &kafka.Writer{Addr: kafka.TCP(kafkaAddr), Async: true}
+}
+
+func shutdownKafka() {
+	kafkaConsumersCancel()
+	log.Println("Requested Kafka consumers to finish")
+	kafkaConsumersWG.Wait()
+	log.Println("All Kafka consumers exited handling loops")
+
+	for _, reader := range kafkaConsumers {
+		if err := reader.Close(); err != nil {
+			log.Printf("Failed to close Kafka consumer: %v", err)
+		}
+	}
+	log.Println("All Kafka consumers closed!")
+
+	if err := Kafka.Close(); err == nil {
+		log.Println("Kafka writer successfully closed!")
+	} else {
+		log.Printf("Failed to close Kafka writer: %v", err)
+	}
+}
+
+func kafkaCreateTopics() {
 	conn, err := kafka.Dial("tcp", kafkaAddr)
 	if err != nil {
 		log.Fatalf("Failed to establish Kafka connection: %v", err)
 	}
 	defer conn.Close()
 
-    // Create needed topics
-    topicsToCreate := [...]string{EventsTopic, KeepAliveTopic}
-    topicConfigs := make([]kafka.TopicConfig, 0, len(topicsToCreate))
+	// Create needed topics
+	topicsToCreate := [...]string{EventsTopic, KeepAliveTopic, OrcTokensTopic}
+	topicConfigs := make([]kafka.TopicConfig, 0, len(topicsToCreate))
 
-    for _, topicName := range topicsToCreate {
-        topicConfigs = append(topicConfigs, kafka.TopicConfig{
-            Topic: topicName,
-            NumPartitions: 1,
-            ReplicationFactor: 1,
-        })
-    }
+	for _, topicName := range topicsToCreate {
+		topicConfigs = append(topicConfigs, kafka.TopicConfig{
+			Topic:             topicName,
+			NumPartitions:     1,
+			ReplicationFactor: 1,
+		})
+	}
 
-    if err := conn.CreateTopics(topicConfigs...); err != nil {
-        log.Fatalf("Failed to create Kafka topics: %v", err)
-    }
+	if err := conn.CreateTopics(topicConfigs...); err != nil {
+		log.Fatalf("Failed to create Kafka topics: %v", err)
+	}
 
-    // List topics in cluster
-    partitions, err := conn.ReadPartitions()
-    if err != nil {
-        log.Fatalf("Failed to read Kafka partitions: %v", err)
-    }
+	// List topics in cluster
+	partitions, err := conn.ReadPartitions()
+	if err != nil {
+		log.Fatalf("Failed to read Kafka partitions: %v", err)
+	}
 
-    topicsSet := map[string]struct{}{}
+	topicsSet := map[string]struct{}{}
 
-    for _, p := range partitions {
-        topicsSet[p.Topic] = struct{}{}
-    }
+	for _, p := range partitions {
+		topicsSet[p.Topic] = struct{}{}
+	}
 
-    topics := make([]string, 0, len(topicsSet))
-    for k := range topicsSet {
-        topics = append(topics, k)
-    }
-    log.Printf("Kafka initialized, topics in cluster: %v", topics)
-    
-	Kafka = &kafka.Writer{Addr: kafka.TCP(kafkaAddr), Async: true}
+	topics := make([]string, 0, len(topicsSet))
+	for k := range topicsSet {
+		topics = append(topics, k)
+	}
+	log.Printf("Kafka initialized, topics in cluster: %v", topics)
 }
 
-func shutdownKafka() {
-	if err := Kafka.Close(); err == nil {
-		log.Println("Kafka writer successfully closed!")
-	} else {
-		log.Printf("Failed to close Kafka writer: %v", err)
+var kafkaConsumersWG sync.WaitGroup
+var kafkaConsumersCancel context.CancelFunc
+
+func kafkaStartConsumers(app *App) {
+	ctx, cancel := context.WithCancel(context.Background())
+	kafkaConsumersCancel = cancel
+
+	kafkaConsumers = make([]*kafka.Reader, 0, len(app.KafkaHandlers))
+	for topic, handler := range app.KafkaHandlers {
+		reader := kafka.NewReader(kafka.ReaderConfig{
+			Brokers:        []string{kafkaAddr},
+			GroupID:        kafkaConsumerGroup,
+			Topic:          topic,
+			CommitInterval: time.Second,
+		})
+		kafkaConsumersWG.Add(1)
+		go kafkaStartConsumer(reader, handler, ctx)
+	}
+}
+
+func kafkaStartConsumer(reader *kafka.Reader, handler func([]byte), ctx context.Context) {
+	defer kafkaConsumersWG.Done()
+
+	for {
+		message, err := reader.FetchMessage(ctx)
+		if err != nil {
+			if err != context.Canceled {
+                log.Printf("Failed to consume message from Kafka: %v", err)
+            }
+			break
+		}
+
+		handler(message.Value)
 	}
 }

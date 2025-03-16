@@ -21,6 +21,9 @@ func main() {
         HTTPRoutes: map[string]http.HandlerFunc {
             "/api/v1/track": handlers.TrackHandler,
         },
+        KafkaHandlers: map[string]func([]byte) {
+            app.OrcTokensTopic: handlers.HandleOrcTokens,
+        },
     })
 
     waitStop()
