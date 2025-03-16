@@ -21,7 +21,7 @@ import (
 	"github.com/vegris/alas-go/kiwi/token"
 )
 
-type okResponse struct {
+type orcEventResponse struct {
 	Status   string `json:"status"`
 	Token    string `json:"token"`
 	TokenTTL int64  `json:"ttl"`
@@ -82,18 +82,29 @@ func TrackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	freshToken, tokenTTL, err := refreshToken(oldToken)
-	if err != nil {
-		handleError(w, err)
-		return
+	outEvent := events.BuildOutEvent(event, oldToken)
+
+	if event.EventType == "orc-event" {
+		freshToken, tokenTTL, err := refreshToken(oldToken)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+
+		if err := produceOutEvent(outEvent, app.KeepAliveTopic); err != nil {
+			handleError(w, err)
+			return
+		}
+
+		json.NewEncoder(w).Encode(orcEventResponse{Status: "OK", Token: freshToken, TokenTTL: tokenTTL})
+	} else {
+		if err := produceOutEvent(outEvent, app.EventsTopic); err != nil {
+			handleError(w, err)
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]string{"status": "OK"})
 	}
-
-    if err := produceKeepAliveEvent(event, oldToken); err != nil {
-       handleError(w, err) 
-       return
-    }
-
-	json.NewEncoder(w).Encode(okResponse{Status: "OK", Token: freshToken, TokenTTL: tokenTTL})
 }
 
 func readOrcToken(r *http.Request) (*token.Token, error) {
@@ -177,25 +188,24 @@ func refreshToken(token *token.Token) (string, int64, error) {
 	return encodedToken, ttl, nil
 }
 
-func produceKeepAliveEvent(mobileEvent *events.MobileEvent, token *token.Token) error {
-    outEvent := events.BuildKeepAliveEvent(mobileEvent, token)
-    outMessage, err := json.Marshal(outEvent)
-    if err != nil {
-        // This should never happen
-        log.Fatalf("Encoding KeepAlive event to JSON failed: %v", err)
-    }
+func produceOutEvent(event *events.OutEvent, topic string) error {
+	outMessage, err := json.Marshal(event)
+	if err != nil {
+		// This should never happen
+		log.Fatalf("Encoding out event to JSON failed: %v", err)
+	}
 
-    message := kafka.Message{
-        Topic: app.KeepAliveTopic,
-        Value: outMessage,
-    }
+	message := kafka.Message{
+		Topic: topic,
+		Value: outMessage,
+	}
 
-    if err := app.Kafka.WriteMessages(context.Background(), message); err != nil {
-		log.Printf("Error producing to Redis: %v", err)
-        return errInternalError
-    }
+	if err := app.Kafka.WriteMessages(context.Background(), message); err != nil {
+		log.Printf("Error producing to Kafka: %v", err)
+		return errInternalError
+	}
 
-    return nil
+	return nil
 }
 
 func handleError(w http.ResponseWriter, err error) {

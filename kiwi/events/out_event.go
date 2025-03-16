@@ -7,7 +7,7 @@ import (
 	"github.com/vegris/alas-go/kiwi/token"
 )
 
-type KeepAliveEvent struct {
+type OutEvent struct {
 	EventName       string                 `json:"event_name"`
 	EventType       string                 `json:"event_type"`
 	EventSource     string                 `json:"event_source"`
@@ -22,11 +22,11 @@ type KeepAliveEvent struct {
 	ProcessedAt     int64                  `json:"processed_at"`
 }
 
-func BuildKeepAliveEvent(mobileEvent *MobileEvent, token *token.Token) *KeepAliveEvent {
+func BuildOutEvent(mobileEvent *MobileEvent, token *token.Token) *OutEvent {
 	deviceInfo := mobileEvent.DeviceInfo
 	deviceInfo.DeviceID = token.DeviceID
 
-	return &KeepAliveEvent{
+	return &OutEvent{
 		EventName:      mobileEvent.EventName,
 		EventType:      mobileEvent.EventType,
 		EventSource:    mobileEvent.EventSource,
