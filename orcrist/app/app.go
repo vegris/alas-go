@@ -2,11 +2,14 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 )
@@ -17,6 +20,7 @@ type App struct {
 }
 
 var Redis *redis.Client
+var DB *pgxpool.Pool
 var Kafka *kafka.Writer
 var kafkaConsumers []*kafka.Reader
 var httpServer *http.Server
@@ -26,6 +30,7 @@ const OrcTokensTopic = "orc-tokens"
 
 func Start(app *App) {
 	startRedis()
+	startPostgres()
 	startKafka(app)
 	startHTTPServer(app)
 }
@@ -33,6 +38,7 @@ func Start(app *App) {
 func Shutdown() {
 	shutdownHTTPServer()
 	shutdownKafka()
+	shutdownPostgres()
 	shutdownRedis()
 }
 
@@ -180,11 +186,49 @@ func kafkaStartConsumer(reader *kafka.Reader, handler func([]byte), ctx context.
 		message, err := reader.FetchMessage(ctx)
 		if err != nil {
 			if err != context.Canceled {
-                log.Printf("Failed to consume message from Kafka: %v", err)
-            }
+				log.Printf("Failed to consume message from Kafka: %v", err)
+			}
 			break
 		}
 
 		handler(message.Value)
 	}
+}
+
+func startPostgres() {
+	const postgresURL = "postgres://postgres:postgres@localhost:5432"
+	const dbName = "sting"
+
+	ctx := context.Background()
+
+	db, err := pgx.Connect(ctx, postgresURL)
+	if err != nil {
+		log.Fatalf("Unable to connect to Postgres: %v", err)
+	}
+	defer db.Close(ctx)
+
+	query := fmt.Sprintf("CREATE DATABASE %s", dbName)
+	if _, err := db.Exec(ctx, query); err == nil {
+		log.Println("Application database created successfully!")
+	} else {
+        // Continue starting Postgres on create db error
+        // because the db can already exist
+		log.Printf("Failed to create application database: %v", err)
+	}
+
+	dbpool, err := pgxpool.New(ctx, postgresURL+"/"+dbName)
+	if err != nil {
+		log.Fatalf("Unable to create connection pool: %v", err)
+	}
+	if err := dbpool.Ping(ctx); err != nil {
+		log.Fatalf("Failed to ping DB via connection pool: %v", err)
+	}
+
+	DB = dbpool
+	log.Println("Postgres connection pool initialized!")
+}
+
+func shutdownPostgres() {
+	DB.Close()
+	log.Println("Postgres connection pool successfully closed!")
 }

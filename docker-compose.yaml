@@ -5,6 +5,14 @@ services:
     ports:
       - "6379:6379"
 
+  postgres:
+    image: "postgres:16.4"
+    restart: "on-failure:3"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+
   kafka:
     image: "bitnami/kafka:3.9"
     restart: "on-failure:3"
