@@ -2,12 +2,17 @@ package app
 
 import (
 	"context"
+	"embed"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -195,6 +200,9 @@ func kafkaStartConsumer(reader *kafka.Reader, handler func([]byte), ctx context.
 	}
 }
 
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
+
 func startPostgres() {
 	const postgresURL = "postgres://postgres:postgres@localhost:5432"
 	const dbName = "sting"
@@ -205,17 +213,47 @@ func startPostgres() {
 	if err != nil {
 		log.Fatalf("Unable to connect to Postgres: %v", err)
 	}
-	defer db.Close(ctx)
 
+	// Create database is not exists
 	query := fmt.Sprintf("CREATE DATABASE %s", dbName)
 	if _, err := db.Exec(ctx, query); err == nil {
 		log.Println("Application database created successfully!")
 	} else {
-        // Continue starting Postgres on create db error
-        // because the db can already exist
+		// Continue starting Postgres on create db error
+		// because the db can already exist
 		log.Printf("Failed to create application database: %v", err)
 	}
 
+    if err := db.Close(ctx); err != nil {
+        log.Fatalf("Failed to close DB connection: %v", err)
+    }
+
+	// Run migrations
+	sourceDriver, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		log.Fatalf("Failed to create source driver for migrations: %v", err)
+	}
+
+    // TODO: merge DB connection strings in single place
+	migrator, err := migrate.NewWithSourceInstance("migrator", sourceDriver, "pgx5://postgres:postgres@localhost:5432/sting")
+	if err != nil {
+		log.Fatalf("Failed to create migrator: %v", err)
+	}
+
+	if err := migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		log.Fatalf("Failed to apply migrations: %v", err)
+	}
+    log.Println("Successfully applied DB migrations!")
+
+	sourceErr, dbErr := migrator.Close()
+	if sourceErr != nil {
+		log.Fatalf("Failed to close source migration driver: %v", err)
+	}
+	if dbErr != nil {
+		log.Fatalf("Failed to close database migration driver: %v", err)
+	}
+
+	// Initialize connection pool
 	dbpool, err := pgxpool.New(ctx, postgresURL+"/"+dbName)
 	if err != nil {
 		log.Fatalf("Unable to create connection pool: %v", err)
