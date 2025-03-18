@@ -1,10 +1,11 @@
 package config
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"log"
 	"os"
+
+	"github.com/vegris/alas-go/shared/token"
 )
 
 type config struct {
@@ -30,11 +31,11 @@ func readEnv(name string) string {
 }
 
 func parseTokenSecret(value string) []byte {
-	secret, err := base64.StdEncoding.DecodeString(value)
-	if err != nil {
-		log.Fatalf("Failed to decode token secret: %v", err)
-	}
-	return secret
+    secret, err := token.DecodeSecret(value)
+    if err != nil {
+        log.Fatalf("Failed to parse token secret: %v", err)
+    }
+    return secret
 }
 
 func parseAllowedSources(value string) []string {

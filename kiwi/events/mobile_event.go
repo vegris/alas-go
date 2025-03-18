@@ -1,11 +1,14 @@
 package events
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
-	"github.com/vegris/alas-go/kiwi/schemas"
+	"github.com/santhosh-tekuri/jsonschema/v6"
+	"github.com/vegris/alas-go/shared/schemas"
 )
 
 // MobileEvent represents the structure of the mobile event
@@ -51,6 +54,24 @@ type networkInfo struct {
 	Carrier        string `json:"carrier"`
 }
 
+//go:embed mobile_event.json
+var schemaFS embed.FS
+var mobileEventSchema *jsonschema.Schema
+
+func Initialize() {
+	schemaFile, err := schemaFS.Open("mobile_event.json")
+	if err != nil {
+        log.Fatalf("Failed to open schema file: %v", err)
+	}
+
+    schema, err := schemas.CompileSchema(schemaFile)
+    if err != nil {
+        log.Fatalf("Failed to compile token schema: %v", err)
+    }
+
+    mobileEventSchema = schema
+}
+
 func ParseMobileEvent(body []byte) (*MobileEvent, error) {
 	// Parse into generic interface{} for schema validation
 	var eventInstance any
@@ -59,7 +80,7 @@ func ParseMobileEvent(body []byte) (*MobileEvent, error) {
 	}
 
 	// Validate JSON against the schema
-	if err := schemas.MobileEventSchema.Validate(eventInstance); err != nil {
+	if err := mobileEventSchema.Validate(eventInstance); err != nil {
 		return nil, fmt.Errorf("invalid mobile event JSON: %w", err)
 	}
 

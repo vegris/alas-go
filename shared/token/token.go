@@ -4,15 +4,21 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
-	"github.com/vegris/alas-go/kiwi/config"
-	"github.com/vegris/alas-go/kiwi/schemas"
+	"github.com/santhosh-tekuri/jsonschema/v6"
+	"github.com/vegris/alas-go/shared/schemas"
 )
+
+//go:embed token.json
+var schemaFS embed.FS
+var tokenSchema *jsonschema.Schema
 
 // Token represents the decoded token structure.
 type Token struct {
@@ -21,8 +27,30 @@ type Token struct {
 	ExpireAt  int64     `json:"expire_at"`
 }
 
+func Initialize() {
+	schemaFile, err := schemaFS.Open("token.json")
+	if err != nil {
+		log.Fatalf("Failed to open schema file: %v", err)
+	}
+
+	schema, err := schemas.CompileSchema(schemaFile)
+	if err != nil {
+		log.Fatalf("Failed to compile token schema: %v", err)
+	}
+
+	tokenSchema = schema
+}
+
+func DecodeSecret(value string) ([]byte, error) {
+	secret, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+        return nil, err
+	}
+	return secret, nil
+}
+
 // Encode encodes a Token into a Base64-encoded encrypted string.
-func (token Token) Encode() (string, error) {
+func (token Token) Encode(secret []byte) (string, error) {
 	// Marshal the token into JSON
 	tokenJSON, err := json.Marshal(token)
 	if err != nil {
@@ -31,12 +59,12 @@ func (token Token) Encode() (string, error) {
 
 	// Generate a random IV
 	iv := make([]byte, aes.BlockSize)
-    if _, err := rand.Read(iv); err != nil {
+	if _, err := rand.Read(iv); err != nil {
 		return "", fmt.Errorf("failed to generate IV: %w", err)
 	}
 
 	// Encrypt the token body using AES256 CTR
-	block, err := aes.NewCipher(config.Config.TokenSecret)
+	block, err := aes.NewCipher(secret)
 	if err != nil {
 		return "", fmt.Errorf("failed to create cipher: %w", err)
 	}
@@ -52,7 +80,7 @@ func (token Token) Encode() (string, error) {
 }
 
 // Decode decodes a Base64-encoded encrypted string into a Token.
-func Decode(encodedToken string) (*Token, error) {
+func Decode(encodedToken string, secret []byte) (*Token, error) {
 	// Base64 decode the token
 	combined, err := base64.StdEncoding.DecodeString(encodedToken)
 	if err != nil {
@@ -67,7 +95,7 @@ func Decode(encodedToken string) (*Token, error) {
 	ciphertext := combined[aes.BlockSize:]
 
 	// Decrypt the ciphertext using AES256 CTR
-	block, err := aes.NewCipher(config.Config.TokenSecret)
+	block, err := aes.NewCipher(secret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
@@ -75,14 +103,14 @@ func Decode(encodedToken string) (*Token, error) {
 	plaintext := make([]byte, len(ciphertext))
 	stream.XORKeyStream(plaintext, ciphertext)
 
-    // Parse into generic interface{} for schema validation
+	// Parse into generic interface{} for schema validation
 	var tokenInstance any
 	if err := json.Unmarshal(plaintext, &tokenInstance); err != nil {
 		return nil, fmt.Errorf("invalid JSON: %w", err)
 	}
 
-    // Validate JSON against the schema
-	if err := schemas.TokenSchema.Validate(tokenInstance); err != nil {
+	// Validate JSON against the schema
+	if err := tokenSchema.Validate(tokenInstance); err != nil {
 		return nil, fmt.Errorf("invalid token JSON: %w", err)
 	}
 
@@ -94,4 +122,3 @@ func Decode(encodedToken string) (*Token, error) {
 
 	return &token, nil
 }
-

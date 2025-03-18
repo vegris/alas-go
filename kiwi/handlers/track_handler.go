@@ -18,7 +18,7 @@ import (
 	"github.com/vegris/alas-go/kiwi/app"
 	"github.com/vegris/alas-go/kiwi/config"
 	"github.com/vegris/alas-go/kiwi/events"
-	"github.com/vegris/alas-go/kiwi/token"
+	"github.com/vegris/alas-go/shared/token"
 )
 
 type orcEventResponse struct {
@@ -111,7 +111,7 @@ func readOrcToken(r *http.Request) (*token.Token, error) {
 	header := r.Header.Get("x-goblin")
 
 	// token.Decode can work with empty strings
-	t, err := token.Decode(header)
+	t, err := token.Decode(header, config.Config.TokenSecret)
 	if err != nil {
 		return nil, errBadToken
 	}

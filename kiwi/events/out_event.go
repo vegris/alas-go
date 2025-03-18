@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vegris/alas-go/kiwi/token"
+	"github.com/vegris/alas-go/shared/token"
 )
 
 type OutEvent struct {

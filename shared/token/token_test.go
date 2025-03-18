@@ -5,19 +5,26 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"log"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/vegris/alas-go/kiwi/config"
-	"github.com/vegris/alas-go/kiwi/schemas"
 )
 
+var secret []byte
+
 func TestMain(m *testing.M) {
-    config.Initialize()
-    schemas.Initialize()
+    Initialize()
+
+    s, err := DecodeSecret("vk5LxATdFF6whkWrTIs5UXsQOD1gbjGWIecKSsf4Q5I=")
+    if err != nil {
+        log.Fatalf("Failed to decode token secret: %v", err)
+    }
+    secret = s
+
 	code := m.Run()
 	os.Exit(code)
 }
@@ -35,12 +42,12 @@ func TestEncodeDecode(t *testing.T) {
 	}
 
 	// Encode the token
-	encoded, err := token.Encode()
+	encoded, err := token.Encode(secret)
 	assert.NoError(t, err, "Encode should not return an error")
 	assert.NotEmpty(t, encoded, "Encoded token should not be empty")
 
 	// Decode the token
-	decoded, err := Decode(encoded)
+	decoded, err := Decode(encoded, secret)
 	assert.NoError(t, err, "Decode should not return an error")
 	assert.Equal(t, token.SessionID, decoded.SessionID, "SessionID should match")
 	assert.Equal(t, token.DeviceID, decoded.DeviceID, "DeviceID should match")
@@ -49,19 +56,19 @@ func TestEncodeDecode(t *testing.T) {
 
 func TestDecodeInvalidToken(t *testing.T) {
 	// Test with an invalid Base64 string
-	_, err := Decode("invalid-base64")
+	_, err := Decode("invalid-base64", secret)
 	assert.Error(t, err, "Decode should return an error for invalid Base64")
 
 	// Test with a token that's too short
 	shortToken := base64.URLEncoding.EncodeToString([]byte("too-short"))
-	_, err = Decode(shortToken)
+	_, err = Decode(shortToken, secret)
 	assert.Error(t, err, "Decode should return an error for a token that's too short")
 
 	// Test with a tampered token (invalid JSON)
 	tamperedToken := make([]byte, 32)
 	rand.Read(tamperedToken)
 	encodedTamperedToken := base64.URLEncoding.EncodeToString(tamperedToken)
-	_, err = Decode(encodedTamperedToken)
+	_, err = Decode(encodedTamperedToken, secret)
 	assert.Error(t, err, "Decode should return an error for a tampered token")
 }
 
@@ -71,7 +78,7 @@ func TestDecodeInvalidJSON(t *testing.T) {
 	iv := make([]byte, aes.BlockSize)
 	rand.Read(iv)
 
-	block, err := aes.NewCipher(config.Config.TokenSecret)
+	block, err := aes.NewCipher(secret)
 	assert.NoError(t, err, "Failed to create cipher")
 
 	stream := cipher.NewCTR(block, iv)
@@ -82,6 +89,6 @@ func TestDecodeInvalidJSON(t *testing.T) {
 	encodedToken := base64.URLEncoding.EncodeToString(combined)
 
 	// Attempt to decode
-	_, err = Decode(encodedToken)
+	_, err = Decode(encodedToken, secret)
 	assert.Error(t, err, "Decode should return an error for invalid JSON")
 }
