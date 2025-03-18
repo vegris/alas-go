@@ -125,5 +125,5 @@
       "required": ["connection_type"]
     }
   },
-  "required": ["event_name", "event_timestamp", "user_id", "session_id", "device_info", "app_info"]
+  "required": ["event_name", "event_type", "event_source", "event_timestamp", "user_id", "session_id", "device_info", "app_info"]
 }
