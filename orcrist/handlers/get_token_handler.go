@@ -65,12 +65,17 @@ func HandleGetToken(w http.ResponseWriter, r *http.Request) {
 		token = sessions.RefreshToken(request, oldToken)
 	}
 
+	err = generateFutureTokens(request, token)
+	if err != nil {
+		// Do not halt request processing on this
+		// It's still possible to return fresh token to the user
+		log.Printf("Error generating future tokens: %v", tokenBinary)
+	}
+
 	tokenBinary, err = token.Encode(config.Config.TokenSecret)
 	if err != nil {
 		log.Fatalf("Error encoding token: %v", tokenBinary)
 	}
-
-	// TODO: produce keep alive tokens
 
 	json.NewEncoder(w).Encode(tokenRequestResponse{Status: "OK", Token: tokenBinary, TokenTTL: token.ExpireAt})
 }
