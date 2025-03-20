@@ -9,25 +9,27 @@ import (
 
 	"github.com/vegris/alas-go/orcrist/app"
 	"github.com/vegris/alas-go/orcrist/config"
+	"github.com/vegris/alas-go/orcrist/events"
 	"github.com/vegris/alas-go/orcrist/handlers"
 )
 
 // TODO: extract all app code into shared lib
 func main() {
 	config.Initialize()
+	events.Initialize()
 
-    app.Start(&app.App{
-        HTTPRoutes: map[string]http.HandlerFunc {
-            "/api/v1/getToken": handlers.HandleGetToken,
-        },
-        KafkaHandlers: map[string]func([]byte) {
-            app.KeepAliveTopic: handlers.HandleKeepAlive,
-        },
-    })
+	app.Start(&app.App{
+		HTTPRoutes: map[string]http.HandlerFunc{
+			"/api/v1/getToken": handlers.HandleGetToken,
+		},
+		KafkaHandlers: map[string]func([]byte){
+			app.KeepAliveTopic: handlers.HandleKeepAlive,
+		},
+	})
 
-    waitStop()
+	waitStop()
 
-    app.Shutdown()
+	app.Shutdown()
 }
 
 func waitStop() {

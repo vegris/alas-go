@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GetTokenRequest",
+  "description": "Schema for getTokenRequest sent by an analytics SDK",
+  "type": "object",
+  "properties": {
+    "event_source": {
+      "type": "string",
+      "description": "The source of the event being tracked",
+      "minLength": 1
+    },
+    "event_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The timestamp when the event occurred in ISO 8601 format"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Unique identifier for the user's session",
+      "format": "uuid"
+    },
+    "device_info": {
+      "type": "object",
+      "description": "Information about the device",
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "description": "Unique identifier for the device",
+          "format": "uuid"
+        },
+        "os": {
+          "type": "string",
+          "description": "Operating system of the device (e.g., iOS, Android)",
+          "minLength": 1
+        },
+        "os_version": {
+          "type": "string",
+          "description": "Version of the operating system",
+          "minLength": 1
+        },
+        "device_model": {
+          "type": "string",
+          "description": "Model of the device (e.g., iPhone 12, Pixel 5)",
+          "minLength": 1
+        },
+        "device_manufacturer": {
+          "type": "string",
+          "description": "Manufacturer of the device (e.g., Apple, Samsung)",
+          "minLength": 1
+        }
+      },
+      "required": ["os", "os_version", "device_model", "device_manufacturer"]
+    }
+  },
+  "required": ["event_source", "event_timestamp", "session_id", "device_info"] 
+}
