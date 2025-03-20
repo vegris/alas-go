@@ -61,15 +61,15 @@ var mobileEventSchema *jsonschema.Schema
 func Initialize() {
 	schemaFile, err := schemaFS.Open("mobile_event.json")
 	if err != nil {
-        log.Fatalf("Failed to open schema file: %v", err)
+		log.Fatalf("Failed to open schema file: %v", err)
 	}
 
-    schema, err := schemas.CompileSchema(schemaFile)
-    if err != nil {
-        log.Fatalf("Failed to compile token schema: %v", err)
-    }
+	schema, err := schemas.CompileSchema(schemaFile)
+	if err != nil {
+		log.Fatalf("Failed to compile token schema: %v", err)
+	}
 
-    mobileEventSchema = schema
+	mobileEventSchema = schema
 }
 
 func ParseMobileEvent(body []byte) (*MobileEvent, error) {

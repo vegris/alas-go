@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-    "github.com/vegris/alas-go/shared/token"
+	"github.com/vegris/alas-go/shared/token"
 )
 
 type config struct {
@@ -16,7 +16,7 @@ var Config *config
 
 func Initialize() {
 	Config = &config{
-		TokenSecret:    parseTokenSecret(readEnv("TOKEN_SECRET")),
+		TokenSecret: parseTokenSecret(readEnv("TOKEN_SECRET")),
 	}
 }
 
@@ -35,4 +35,3 @@ func parseTokenSecret(value string) []byte {
 	}
 	return secret
 }
-

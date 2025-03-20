@@ -65,10 +65,10 @@ func createSession(ctx context.Context, request *events.GetTokenRequest) *repo.S
 	defer tx.Rollback(ctx)
 	q := repo.New(app.DB).WithTx(tx)
 
-    device, err := getOrCreateDevice(ctx, tx, request)
-    if err != nil {
-        return fakeSession()
-    }
+	device, err := getOrCreateDevice(ctx, tx, request)
+	if err != nil {
+		return fakeSession()
+	}
 
 	params := repo.CreateSessionParams{SessionID: genUUID(), DeviceID: device.DeviceID, SessionDuration: sessionDurationSecs}
 	session, err := q.CreateSession(ctx, params)

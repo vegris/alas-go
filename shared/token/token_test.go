@@ -17,13 +17,13 @@ import (
 var secret []byte
 
 func TestMain(m *testing.M) {
-    Initialize()
+	Initialize()
 
-    s, err := DecodeSecret("vk5LxATdFF6whkWrTIs5UXsQOD1gbjGWIecKSsf4Q5I=")
-    if err != nil {
-        log.Fatalf("Failed to decode token secret: %v", err)
-    }
-    secret = s
+	s, err := DecodeSecret("vk5LxATdFF6whkWrTIs5UXsQOD1gbjGWIecKSsf4Q5I=")
+	if err != nil {
+		log.Fatalf("Failed to decode token secret: %v", err)
+	}
+	secret = s
 
 	code := m.Run()
 	os.Exit(code)

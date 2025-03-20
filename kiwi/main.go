@@ -16,21 +16,21 @@ import (
 
 func main() {
 	config.Initialize()
-    token.Initialize()
-    events.Initialize()
+	token.Initialize()
+	events.Initialize()
 
-    app.Start(&app.App{
-        HTTPRoutes: map[string]http.HandlerFunc {
-            "/api/v1/track": handlers.TrackHandler,
-        },
-        KafkaHandlers: map[string]func([]byte) {
-            app.OrcTokensTopic: handlers.HandleOrcTokens,
-        },
-    })
+	app.Start(&app.App{
+		HTTPRoutes: map[string]http.HandlerFunc{
+			"/api/v1/track": handlers.TrackHandler,
+		},
+		KafkaHandlers: map[string]func([]byte){
+			app.OrcTokensTopic: handlers.HandleOrcTokens,
+		},
+	})
 
-    waitStop()
+	waitStop()
 
-    app.Shutdown()
+	app.Shutdown()
 }
 
 func waitStop() {

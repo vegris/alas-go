@@ -181,8 +181,8 @@ func kafkaStartConsumer(reader *kafka.Reader, handler func([]byte), ctx context.
 		message, err := reader.FetchMessage(ctx)
 		if err != nil {
 			if err != context.Canceled {
-                log.Printf("Failed to consume message from Kafka: %v", err)
-            }
+				log.Printf("Failed to consume message from Kafka: %v", err)
+			}
 			break
 		}
 

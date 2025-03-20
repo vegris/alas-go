@@ -31,11 +31,11 @@ func readEnv(name string) string {
 }
 
 func parseTokenSecret(value string) []byte {
-    secret, err := token.DecodeSecret(value)
-    if err != nil {
-        log.Fatalf("Failed to parse token secret: %v", err)
-    }
-    return secret
+	secret, err := token.DecodeSecret(value)
+	if err != nil {
+		log.Fatalf("Failed to parse token secret: %v", err)
+	}
+	return secret
 }
 
 func parseAllowedSources(value string) []string {

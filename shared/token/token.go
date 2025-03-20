@@ -44,7 +44,7 @@ func Initialize() {
 func DecodeSecret(value string) ([]byte, error) {
 	secret, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
-        return nil, err
+		return nil, err
 	}
 	return secret, nil
 }

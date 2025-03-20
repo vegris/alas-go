@@ -224,9 +224,9 @@ func startPostgres() {
 		log.Printf("Failed to create application database: %v", err)
 	}
 
-    if err := db.Close(ctx); err != nil {
-        log.Fatalf("Failed to close DB connection: %v", err)
-    }
+	if err := db.Close(ctx); err != nil {
+		log.Fatalf("Failed to close DB connection: %v", err)
+	}
 
 	// Run migrations
 	sourceDriver, err := iofs.New(migrationsFS, "migrations")
@@ -234,7 +234,7 @@ func startPostgres() {
 		log.Fatalf("Failed to create source driver for migrations: %v", err)
 	}
 
-    // TODO: merge DB connection strings in single place
+	// TODO: merge DB connection strings in single place
 	migrator, err := migrate.NewWithSourceInstance("migrator", sourceDriver, "pgx5://postgres:postgres@localhost:5432/sting")
 	if err != nil {
 		log.Fatalf("Failed to create migrator: %v", err)
@@ -243,7 +243,7 @@ func startPostgres() {
 	if err := migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		log.Fatalf("Failed to apply migrations: %v", err)
 	}
-    log.Println("Successfully applied DB migrations!")
+	log.Println("Successfully applied DB migrations!")
 
 	sourceErr, dbErr := migrator.Close()
 	if sourceErr != nil {

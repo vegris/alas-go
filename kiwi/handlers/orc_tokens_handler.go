@@ -24,8 +24,8 @@ type keepAliveToken struct {
 }
 
 var (
-	errParseError = errors.New("Event is malformed")
-    errStorageError = errors.New("Storage error")
+	errParseError   = errors.New("Event is malformed")
+	errStorageError = errors.New("Storage error")
 )
 
 func HandleOrcTokens(message []byte) {
@@ -38,7 +38,7 @@ func HandleOrcTokens(message []byte) {
 		return
 	}
 
-    log.Printf("Sucessfully stored a pack of keep alive tokens!")
+	log.Printf("Sucessfully stored a pack of keep alive tokens!")
 }
 
 func parseKeepAliveTokensPack(message []byte) (*keepAliveTokensPack, error) {
@@ -76,8 +76,8 @@ func storePack(pack *keepAliveTokensPack) error {
 	tx.ExpireGT(ctx, sessionID, time.Duration(packTTL))
 
 	if _, err := tx.Exec(ctx); err != nil {
-        log.Printf("Failed to store keep alive tokens pack: %v", err)
-        return errStorageError
+		log.Printf("Failed to store keep alive tokens pack: %v", err)
+		return errStorageError
 	}
 
 	return nil
