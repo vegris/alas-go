@@ -4,7 +4,7 @@ WHERE session_id = $1 AND ends_at < CURRENT_TIMESTAMP;
 
 -- name: RefreshSession :one
 UPDATE sessions
-SET ends_at = CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => @session_duration::integer), updated_at = CURRENT_TIMESTAMP
+SET ends_at = CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => @session_duration::bigint), updated_at = CURRENT_TIMESTAMP
 WHERE session_id = $1
 RETURNING *;
 
@@ -19,7 +19,7 @@ RETURNING *;
 
 -- name: CreateSession :one
 INSERT INTO sessions (session_id, device_id, ends_at)
-VALUES ($1, $2, CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => @session_duration::integer))
+VALUES ($1, $2, CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => @session_duration::bigint))
 RETURNING *;
 
 -- name: RemoveStaleSessions :exec

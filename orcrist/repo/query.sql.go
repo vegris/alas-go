@@ -45,14 +45,14 @@ func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (Dev
 
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (session_id, device_id, ends_at)
-VALUES ($1, $2, CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => $3::integer))
+VALUES ($1, $2, CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => $3::bigint))
 RETURNING session_id, device_id, ends_at, inserted_at, updated_at
 `
 
 type CreateSessionParams struct {
 	SessionID       pgtype.UUID
 	DeviceID        pgtype.UUID
-	SessionDuration int32
+	SessionDuration int64
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
@@ -107,14 +107,14 @@ func (q *Queries) GetDeviceByExternalDeviceID(ctx context.Context, externalDevic
 
 const refreshSession = `-- name: RefreshSession :one
 UPDATE sessions
-SET ends_at = CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => $2::integer), updated_at = CURRENT_TIMESTAMP
+SET ends_at = CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => $2::bigint), updated_at = CURRENT_TIMESTAMP
 WHERE session_id = $1
 RETURNING session_id, device_id, ends_at, inserted_at, updated_at
 `
 
 type RefreshSessionParams struct {
 	SessionID       pgtype.UUID
-	SessionDuration int32
+	SessionDuration int64
 }
 
 func (q *Queries) RefreshSession(ctx context.Context, arg RefreshSessionParams) (Session, error) {

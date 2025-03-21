@@ -17,7 +17,7 @@ import (
 
 const sessionDuration = time.Minute
 
-var sessionDurationSecs = int32(sessionDuration.Seconds())
+var sessionDurationSecs = int64(sessionDuration.Seconds())
 
 func RefreshToken(request *events.GetTokenRequest, t *token.Token) *token.Token {
 	ctx := context.Background()
