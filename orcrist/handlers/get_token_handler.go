@@ -65,7 +65,7 @@ func HandleGetToken(w http.ResponseWriter, r *http.Request) {
 		token = sessions.RefreshToken(request, oldToken)
 	}
 
-	err = generateFutureTokens(request, token)
+	err = generateFutureTokens(request.SessionID, token)
 	if err != nil {
 		// Do not halt request processing on this
 		// It's still possible to return fresh token to the user

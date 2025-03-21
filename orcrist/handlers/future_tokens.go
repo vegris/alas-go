@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 	"github.com/vegris/alas-go/orcrist/app"
 	"github.com/vegris/alas-go/orcrist/config"
-	"github.com/vegris/alas-go/orcrist/events"
 	"github.com/vegris/alas-go/shared/token"
 )
 
@@ -29,11 +29,11 @@ type keepAliveToken struct {
 	ExpireAt     int64  `json:"expire_at"`
 }
 
-func generateFutureTokens(request *events.GetTokenRequest, t *token.Token) error {
+func generateFutureTokens(sessionID pgtype.UUID, t *token.Token) error {
 	// TODO: move context to top level request
 	ctx := context.Background()
 
-	expireAt, err := findLastTokenExpiration(ctx, request)
+	expireAt, err := findLastTokenExpiration(ctx, sessionID)
 	if err != nil {
 		return err
 	}
@@ -53,8 +53,8 @@ func generateFutureTokens(request *events.GetTokenRequest, t *token.Token) error
 	return nil
 }
 
-func findLastTokenExpiration(ctx context.Context, request *events.GetTokenRequest) (int64, error) {
-	key := key(request.SessionID.Bytes)
+func findLastTokenExpiration(ctx context.Context, sessionID pgtype.UUID) (int64, error) {
+	key := key(sessionID.Bytes)
 	v, err := app.Redis.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return time.Now().Unix(), nil
@@ -86,8 +86,6 @@ func generateTokensForSessionLifetime(t *token.Token, sessionExpireAt int64) []t
 	return make([]token.Token, 0)
 }
 
-const topic = "orc-tokens"
-
 func sendTokensToKafka(ctx context.Context, tokens []token.Token) error {
 	kaTokens := make([]keepAliveToken, 0, len(tokens))
 	for _, t := range tokens {
@@ -112,6 +110,7 @@ func sendTokensToKafka(ctx context.Context, tokens []token.Token) error {
 		log.Fatalf("Failed to encode keep alive tokens pack: %v", err)
 	}
 
+	topic := app.OrcTokensTopic
 	message := kafka.Message{Topic: topic, Value: payload}
 	if err := app.Kafka.WriteMessages(ctx, message); err != nil {
 		log.Printf("Failed to produce messages to %v: %v", topic, err)
