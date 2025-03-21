@@ -1,4 +1,4 @@
-package config
+package app
 
 import (
 	"encoding/json"
@@ -15,7 +15,7 @@ type config struct {
 
 var Config *config
 
-func Initialize() {
+func InitializeConfig() {
 	Config = &config{
 		TokenSecret:    parseTokenSecret(readEnv("TOKEN_SECRET")),
 		AllowedSources: parseAllowedSources(readEnv("ALLOWED_SOURCES")),

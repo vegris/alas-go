@@ -1,4 +1,4 @@
-package config
+package app
 
 import (
 	"log"
@@ -8,13 +8,12 @@ import (
 )
 
 type config struct {
-	TokenSecret    []byte
-	AllowedSources []string
+	TokenSecret []byte
 }
 
 var Config *config
 
-func Initialize() {
+func InitializeConfig() {
 	Config = &config{
 		TokenSecret: parseTokenSecret(readEnv("TOKEN_SECRET")),
 	}

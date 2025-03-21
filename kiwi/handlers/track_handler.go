@@ -16,7 +16,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 	"github.com/vegris/alas-go/kiwi/app"
-	"github.com/vegris/alas-go/kiwi/config"
 	"github.com/vegris/alas-go/kiwi/events"
 	"github.com/vegris/alas-go/shared/token"
 )
@@ -111,7 +110,7 @@ func readOrcToken(r *http.Request) (*token.Token, error) {
 	header := r.Header.Get("x-goblin")
 
 	// token.Decode can work with empty strings
-	t, err := token.Decode(header, config.Config.TokenSecret)
+	t, err := token.Decode(header, app.Config.TokenSecret)
 	if err != nil {
 		return nil, errBadToken
 	}
@@ -155,7 +154,7 @@ func checkSignature(signature string, body []byte, event *events.MobileEvent) er
 }
 
 func checkSource(event *events.MobileEvent) error {
-	if !slices.Contains(config.Config.AllowedSources, event.EventSource) {
+	if !slices.Contains(app.Config.AllowedSources, event.EventSource) {
 		return errSourceIsNotAllowed
 	}
 	return nil

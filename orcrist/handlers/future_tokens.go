@@ -14,7 +14,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 	"github.com/vegris/alas-go/orcrist/app"
-	"github.com/vegris/alas-go/orcrist/config"
 	"github.com/vegris/alas-go/shared/token"
 )
 
@@ -89,7 +88,7 @@ func generateTokensForSessionLifetime(t *token.Token, sessionExpireAt int64) []t
 func sendTokensToKafka(ctx context.Context, tokens []token.Token) error {
 	kaTokens := make([]keepAliveToken, 0, len(tokens))
 	for _, t := range tokens {
-		tokenBinary, err := t.Encode(config.Config.TokenSecret)
+		tokenBinary, err := t.Encode(app.Config.TokenSecret)
 		if err != nil {
 			log.Fatalf("Failed to encode token: %v", err)
 		}

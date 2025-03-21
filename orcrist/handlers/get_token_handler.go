@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/vegris/alas-go/orcrist/config"
+	"github.com/vegris/alas-go/orcrist/app"
 	"github.com/vegris/alas-go/orcrist/events"
 	"github.com/vegris/alas-go/orcrist/sessions"
 	"github.com/vegris/alas-go/shared/token"
@@ -72,7 +72,7 @@ func HandleGetToken(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error generating future tokens: %v", tokenBinary)
 	}
 
-	tokenBinary, err = token.Encode(config.Config.TokenSecret)
+	tokenBinary, err = token.Encode(app.Config.TokenSecret)
 	if err != nil {
 		log.Fatalf("Error encoding token: %v", tokenBinary)
 	}
@@ -85,7 +85,7 @@ func getOldToken(tokenBinary string) (*token.Token, error) {
 		return nil, nil
 	}
 
-	t, err := token.Decode(tokenBinary, config.Config.TokenSecret)
+	t, err := token.Decode(tokenBinary, app.Config.TokenSecret)
 	if err != nil {
 		return nil, errBadToken
 	}

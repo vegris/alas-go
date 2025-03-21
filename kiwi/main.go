@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/vegris/alas-go/kiwi/app"
-	"github.com/vegris/alas-go/kiwi/config"
 	"github.com/vegris/alas-go/kiwi/events"
 	"github.com/vegris/alas-go/kiwi/handlers"
 	"github.com/vegris/alas-go/shared/application"
@@ -12,7 +11,7 @@ import (
 )
 
 func main() {
-	config.Initialize()
+	app.InitializeConfig()
 	token.Initialize()
 	events.Initialize()
 
