@@ -17,6 +17,11 @@ type Device struct {
 	UpdatedAt        pgtype.Timestamp
 }
 
+type Job struct {
+	Name  string
+	RunAt pgtype.Timestamp
+}
+
 type Session struct {
 	SessionID  pgtype.UUID
 	DeviceID   pgtype.UUID

@@ -25,3 +25,13 @@ RETURNING *;
 -- name: RemoveStaleSessions :exec
 DELETE FROM sessions
 WHERE ends_at <= CURRENT_TIMESTAMP - MAKE_INTERVAL(days => @days);
+
+-- name: InsertJob :one
+INSERT INTO jobs (name, run_at)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING
+RETURNING *;
+
+-- name: RemoveOldJobs :exec
+DELETE FROM jobs
+WHERE name = $1 AND run_at != $2;

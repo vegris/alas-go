@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"embed"
 	"net/http"
+	"sync"
 
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,6 +16,15 @@ import (
 type App struct {
 	HTTPRoutes    map[string]http.HandlerFunc
 	KafkaHandlers map[string]application.KafkaConsumerHandler
+	Jobs          []Job
+}
+
+type Job func(context.Context)
+
+type jobContext struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 var Redis *redis.Client
@@ -35,6 +46,9 @@ func Start(app *App) {
 	DB = application.StartPostgres(appName, migrationsFS)
 	defer application.ShutdownPostgres(DB)
 
+	j := setupJobs(app.Jobs)
+	defer cancelJobs(j)
+
 	topicsToCreate := [...]string{KeepAliveTopic, OrcTokensTopic}
 	k := application.StartKafka(topicsToCreate[:], appName, app.KafkaHandlers)
 	Kafka = k.Writer
@@ -44,4 +58,33 @@ func Start(app *App) {
 	defer application.ShutdownHTTPServer(httpServer)
 
 	application.BlockUntilInterrupt()
+}
+
+func setupJobs(jobs []Job) *jobContext {
+	ctx, cancel := context.WithCancel(context.Background())
+	c := &jobContext{ctx: ctx, cancel: cancel}
+
+	for _, job := range jobs {
+		c.wg.Add(1)
+		go startJob(c, job)
+	}
+
+	return c
+}
+
+func startJob(c *jobContext, j Job) {
+	defer c.wg.Done()
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		default:
+			j(c.ctx)
+		}
+	}
+}
+
+func cancelJobs(c *jobContext) {
+	c.cancel()
+	c.wg.Wait()
 }

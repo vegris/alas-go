@@ -105,6 +105,25 @@ func (q *Queries) GetDeviceByExternalDeviceID(ctx context.Context, externalDevic
 	return i, err
 }
 
+const insertJob = `-- name: InsertJob :one
+INSERT INTO jobs (name, run_at)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING
+RETURNING name, run_at
+`
+
+type InsertJobParams struct {
+	Name  string
+	RunAt pgtype.Timestamp
+}
+
+func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) (Job, error) {
+	row := q.db.QueryRow(ctx, insertJob, arg.Name, arg.RunAt)
+	var i Job
+	err := row.Scan(&i.Name, &i.RunAt)
+	return i, err
+}
+
 const refreshSession = `-- name: RefreshSession :one
 UPDATE sessions
 SET ends_at = CURRENT_TIMESTAMP + MAKE_INTERVAL(secs => $2::bigint), updated_at = CURRENT_TIMESTAMP
@@ -128,6 +147,21 @@ func (q *Queries) RefreshSession(ctx context.Context, arg RefreshSessionParams) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const removeOldJobs = `-- name: RemoveOldJobs :exec
+DELETE FROM jobs
+WHERE name = $1 AND run_at != $2
+`
+
+type RemoveOldJobsParams struct {
+	Name  string
+	RunAt pgtype.Timestamp
+}
+
+func (q *Queries) RemoveOldJobs(ctx context.Context, arg RemoveOldJobsParams) error {
+	_, err := q.db.Exec(ctx, removeOldJobs, arg.Name, arg.RunAt)
+	return err
 }
 
 const removeStaleSessions = `-- name: RemoveStaleSessions :exec
