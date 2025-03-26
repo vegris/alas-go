@@ -42,8 +42,10 @@ services:
     ports:
       - "4000:8080"
     depends_on:
-      - redis
-      - kafka
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     environment:
       TOKEN_SECRET: $TOKEN_SECRET
       ALLOWED_SOURCES: $ALLOWED_SOURCES
@@ -60,8 +62,11 @@ services:
     ports:
       - "4001:8080"
     depends_on:
-      - redis
-      - postgres
-      - kafka
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     environment:
       TOKEN_SECRET: $TOKEN_SECRET
