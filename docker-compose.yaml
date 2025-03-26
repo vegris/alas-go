@@ -41,10 +41,12 @@ services:
     restart: "on-failure:3"
     ports:
       - "4000:8080"
-    env_file: kiwi/.env
     depends_on:
       - redis
       - kafka
+    environment:
+      TOKEN_SECRET: $TOKEN_SECRET
+      ALLOWED_SOURCES: $ALLOWED_SOURCES
 
   orcrist:
     profiles:
@@ -57,8 +59,9 @@ services:
     restart: "on-failure:3"
     ports:
       - "4001:8080"
-    env_file: orcrist/.env
     depends_on:
       - redis
       - postgres
       - kafka
+    environment:
+      TOKEN_SECRET: $TOKEN_SECRET
