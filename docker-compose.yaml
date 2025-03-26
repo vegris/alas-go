@@ -29,3 +29,36 @@ services:
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@localhost:9093"
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+
+  kiwi:
+    profiles:
+      - integration
+    image: kiwi
+    pull_policy: never
+    build:
+      args:
+        PROGRAM_NAME: kiwi
+    restart: "on-failure:3"
+    ports:
+      - "4000:8080"
+    env_file: kiwi/.env
+    depends_on:
+      - redis
+      - kafka
+
+  orcrist:
+    profiles:
+      - integration
+    image: orcrist
+    pull_policy: never
+    build:
+      args:
+        PROGRAM_NAME: orcrist
+    restart: "on-failure:3"
+    ports:
+      - "4001:8080"
+    env_file: orcrist/.env
+    depends_on:
+      - redis
+      - postgres
+      - kafka
