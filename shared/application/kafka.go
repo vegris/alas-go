@@ -23,11 +23,10 @@ type kafkaConsumers struct {
 	cancel  context.CancelFunc
 }
 
-const kafkaAddr = "localhost:9092"
-
-func StartKafka(topicsToCreate []string, consumerGroup string, handlers KafkaConsumerHandlers) Kafka {
-	kafkaCreateTopics(topicsToCreate)
-	consumers := kafkaStartConsumers(consumerGroup, handlers)
+func StartKafka(host string, topicsToCreate []string, consumerGroup string, handlers KafkaConsumerHandlers) Kafka {
+	kafkaAddr := host + ":9092"
+	kafkaCreateTopics(kafkaAddr, topicsToCreate)
+	consumers := kafkaStartConsumers(kafkaAddr, consumerGroup, handlers)
 	writer := &kafka.Writer{Addr: kafka.TCP(kafkaAddr), Async: true}
 
 	return Kafka{Writer: writer, consumers: consumers}
@@ -53,7 +52,7 @@ func ShutdownKafka(k Kafka) {
 	}
 }
 
-func kafkaCreateTopics(topicsToCreate []string) {
+func kafkaCreateTopics(kafkaAddr string, topicsToCreate []string) {
 	conn, err := kafka.Dial("tcp", kafkaAddr)
 	if err != nil {
 		log.Fatalf("Failed to establish Kafka connection: %v", err)
@@ -94,7 +93,7 @@ func kafkaCreateTopics(topicsToCreate []string) {
 	log.Printf("Kafka initialized, topics in cluster: %v", topics)
 }
 
-func kafkaStartConsumers(consumerGroup string, handlers KafkaConsumerHandlers) kafkaConsumers {
+func kafkaStartConsumers(kafkaAddr string, consumerGroup string, handlers KafkaConsumerHandlers) kafkaConsumers {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	readers := make([]*kafka.Reader, 0, len(handlers))

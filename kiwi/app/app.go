@@ -23,11 +23,11 @@ const KeepAliveTopic = "keep-alive"
 const OrcTokensTopic = "orc-tokens"
 
 func Start(app *App) {
-	Redis = application.StartRedis()
+	Redis = application.StartRedis(Config.RedisHost)
 	defer application.ShutdownRedis(Redis)
 
 	topicsToCreate := [...]string{EventsTopic, KeepAliveTopic, OrcTokensTopic}
-	k := application.StartKafka(topicsToCreate[:], appName, app.KafkaHandlers)
+	k := application.StartKafka(Config.KafkaHost, topicsToCreate[:], appName, app.KafkaHandlers)
 	Kafka = k.Writer
 	defer application.ShutdownKafka(k)
 

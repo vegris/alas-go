@@ -9,6 +9,8 @@ import (
 )
 
 type config struct {
+	RedisHost      string
+	KafkaHost      string
 	TokenSecret    []byte
 	AllowedSources []string
 }
@@ -17,6 +19,8 @@ var Config *config
 
 func InitializeConfig() {
 	Config = &config{
+		RedisHost:      readEnv("REDIS_HOST"),
+		KafkaHost:      readEnv("KAFKA_HOST"),
 		TokenSecret:    parseTokenSecret(readEnv("TOKEN_SECRET")),
 		AllowedSources: parseAllowedSources(readEnv("ALLOWED_SOURCES")),
 	}

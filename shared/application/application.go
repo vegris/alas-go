@@ -50,9 +50,9 @@ func ShutdownHTTPServer(server *http.Server) {
 	}
 }
 
-func StartRedis() *redis.Client {
+func StartRedis(host string) *redis.Client {
 	r := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: host + ":6379",
 	})
 
 	if err := r.Ping(context.Background()).Err(); err == nil {

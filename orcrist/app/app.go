@@ -40,17 +40,17 @@ const OrcTokensTopic = "orc-tokens"
 var migrationsFS embed.FS
 
 func Start(app *App) {
-	Redis = application.StartRedis()
+	Redis = application.StartRedis(Config.RedisHost)
 	defer application.ShutdownRedis(Redis)
 
-	DB = application.StartPostgres(appName, migrationsFS)
+	DB = application.StartPostgres(Config.PostgresHost, appName, migrationsFS)
 	defer application.ShutdownPostgres(DB)
 
 	j := setupJobs(app.Jobs)
 	defer cancelJobs(j)
 
 	topicsToCreate := [...]string{KeepAliveTopic, OrcTokensTopic}
-	k := application.StartKafka(topicsToCreate[:], appName, app.KafkaHandlers)
+	k := application.StartKafka(Config.KafkaHost, topicsToCreate[:], appName, app.KafkaHandlers)
 	Kafka = k.Writer
 	defer application.ShutdownKafka(k)
 

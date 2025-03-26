@@ -13,8 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func StartPostgres(dbName string, migrations fs.FS) *pgxpool.Pool {
-	const postgresURL = "postgres://postgres:postgres@localhost:5432"
+func StartPostgres(host string, dbName string, migrations fs.FS) *pgxpool.Pool {
+	postgresURL := fmt.Sprintf("postgres://postgres:postgres@%s:5432", host)
 
 	ctx := context.Background()
 
@@ -43,7 +43,7 @@ func StartPostgres(dbName string, migrations fs.FS) *pgxpool.Pool {
 		log.Fatalf("Failed to create source driver for migrations: %v", err)
 	}
 
-	dbURL := "pgx5://postgres:postgres@localhost:5432/" + dbName
+	dbURL := fmt.Sprintf("pgx5://postgres:postgres@%s:5432/%s", host, dbName)
 	migrator, err := migrate.NewWithSourceInstance("migrator", sourceDriver, dbURL)
 	if err != nil {
 		log.Fatalf("Failed to create migrator: %v", err)

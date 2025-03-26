@@ -8,14 +8,20 @@ import (
 )
 
 type config struct {
-	TokenSecret []byte
+	RedisHost    string
+	PostgresHost string
+	KafkaHost    string
+	TokenSecret  []byte
 }
 
 var Config *config
 
 func InitializeConfig() {
 	Config = &config{
-		TokenSecret: parseTokenSecret(readEnv("TOKEN_SECRET")),
+		RedisHost:    readEnv("REDIS_HOST"),
+		PostgresHost: readEnv("POSTGRES_HOST"),
+		KafkaHost:    readEnv("KAFKA_HOST"),
+		TokenSecret:  parseTokenSecret(readEnv("TOKEN_SECRET")),
 	}
 }
 
