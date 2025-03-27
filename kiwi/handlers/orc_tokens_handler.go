@@ -73,7 +73,7 @@ func storePack(pack *keepAliveTokensPack) error {
 	tx.ZAdd(ctx, sessionID, members...)
 
 	packTTL := calculatePackTTL(pack.Tokens)
-	tx.ExpireGT(ctx, sessionID, time.Duration(packTTL))
+	tx.ExpireGT(ctx, sessionID, packTTL)
 
 	if _, err := tx.Exec(ctx); err != nil {
 		log.Printf("Failed to store keep alive tokens pack: %v", err)
@@ -83,7 +83,7 @@ func storePack(pack *keepAliveTokensPack) error {
 	return nil
 }
 
-func calculatePackTTL(tokens []keepAliveToken) int64 {
+func calculatePackTTL(tokens []keepAliveToken) time.Duration {
 	// Find longest living token
 	max := tokens[0].ExpireAt
 	for _, value := range tokens {
@@ -92,5 +92,5 @@ func calculatePackTTL(tokens []keepAliveToken) int64 {
 		}
 	}
 
-	return max - time.Now().Unix()
+	return time.Unix(max, 0).Sub(time.Now())
 }
