@@ -85,7 +85,7 @@ func generateTokensForSessionLifetime(t *token.Token, sessionExpireAt int64) []t
 		baseToken.ExpireAt += int64(tokenLifetime.Seconds())
 		tokens = append(tokens, baseToken)
 	}
-	return make([]token.Token, 0)
+	return tokens
 }
 
 func sendTokensToKafka(ctx context.Context, tokens []token.Token) error {
