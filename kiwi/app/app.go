@@ -27,7 +27,7 @@ func Start(app *App) {
 	defer application.ShutdownRedis(Redis)
 
 	topicsToCreate := [...]string{EventsTopic, KeepAliveTopic, OrcTokensTopic}
-	k := application.StartKafka(Config.KafkaHost, topicsToCreate[:], appName, app.KafkaHandlers)
+	k := application.StartKafka(Config.KafkaHost, topicsToCreate[:], appName, app.KafkaHandlers, Config.KafkaSync)
 	Kafka = k.Writer
 	defer application.ShutdownKafka(k)
 

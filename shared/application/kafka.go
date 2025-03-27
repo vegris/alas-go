@@ -23,11 +23,11 @@ type kafkaConsumers struct {
 	cancel  context.CancelFunc
 }
 
-func StartKafka(host string, topicsToCreate []string, consumerGroup string, handlers KafkaConsumerHandlers) Kafka {
+func StartKafka(host string, topicsToCreate []string, consumerGroup string, handlers KafkaConsumerHandlers, sync bool) Kafka {
 	kafkaAddr := host + ":9092"
 	kafkaCreateTopics(kafkaAddr, topicsToCreate)
-	consumers := kafkaStartConsumers(kafkaAddr, consumerGroup, handlers)
-	writer := &kafka.Writer{Addr: kafka.TCP(kafkaAddr), Async: true}
+	consumers := kafkaStartConsumers(kafkaAddr, consumerGroup, handlers, sync)
+	writer := kafkaWriter(kafkaAddr, sync)
 
 	return Kafka{Writer: writer, consumers: consumers}
 }
@@ -50,6 +50,20 @@ func ShutdownKafka(k Kafka) {
 	} else {
 		log.Printf("Failed to close Kafka writer: %v", err)
 	}
+}
+
+func kafkaWriter(kafkaAddr string, sync bool) *kafka.Writer {
+	writer := &kafka.Writer{
+		Addr:         kafka.TCP(kafkaAddr),
+		Async:        !sync,
+		RequiredAcks: kafka.RequireOne,
+	}
+
+	if sync {
+		writer.BatchSize = 1
+	}
+
+	return writer
 }
 
 func kafkaCreateTopics(kafkaAddr string, topicsToCreate []string) {
@@ -93,17 +107,13 @@ func kafkaCreateTopics(kafkaAddr string, topicsToCreate []string) {
 	log.Printf("Kafka initialized, topics in cluster: %v", topics)
 }
 
-func kafkaStartConsumers(kafkaAddr string, consumerGroup string, handlers KafkaConsumerHandlers) kafkaConsumers {
+func kafkaStartConsumers(kafkaAddr string, consumerGroup string, handlers KafkaConsumerHandlers, kafkaSync bool) kafkaConsumers {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	readers := make([]*kafka.Reader, 0, len(handlers))
 	for topic, handler := range handlers {
-		reader := kafka.NewReader(kafka.ReaderConfig{
-			Brokers:        []string{kafkaAddr},
-			GroupID:        consumerGroup,
-			Topic:          topic,
-			CommitInterval: time.Second,
-		})
+		rc := kafkaReaderConfig(kafkaAddr, consumerGroup, topic, kafkaSync)
+		reader := kafka.NewReader(rc)
 		wg.Add(1)
 		go kafkaStartConsumer(ctx, reader, handler, wg)
 	}
@@ -111,11 +121,25 @@ func kafkaStartConsumers(kafkaAddr string, consumerGroup string, handlers KafkaC
 	return kafkaConsumers{readers: readers, wg: wg, cancel: cancel}
 }
 
+func kafkaReaderConfig(kafkaAddr string, consumerGroup string, topic string, sync bool) kafka.ReaderConfig {
+	rc := kafka.ReaderConfig{
+		Brokers: []string{kafkaAddr},
+		GroupID: consumerGroup,
+		Topic:   topic,
+	}
+
+	if !sync {
+		rc.CommitInterval = time.Second
+	}
+
+	return rc
+}
+
 func kafkaStartConsumer(ctx context.Context, reader *kafka.Reader, handler KafkaConsumerHandler, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
-		message, err := reader.FetchMessage(ctx)
+		message, err := reader.ReadMessage(ctx)
 		if err != nil {
 			if err != context.Canceled {
 				log.Printf("Failed to consume message from Kafka: %v", err)

@@ -50,7 +50,7 @@ func Start(app *App) {
 	defer cancelJobs(j)
 
 	topicsToCreate := [...]string{KeepAliveTopic, OrcTokensTopic}
-	k := application.StartKafka(Config.KafkaHost, topicsToCreate[:], appName, app.KafkaHandlers)
+	k := application.StartKafka(Config.KafkaHost, topicsToCreate[:], appName, app.KafkaHandlers, Config.KafkaSync)
 	Kafka = k.Writer
 	defer application.ShutdownKafka(k)
 

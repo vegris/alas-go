@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"log"
+	"os"
 
 	"github.com/vegris/alas-go/shared/application"
 	"github.com/vegris/alas-go/shared/token"
@@ -12,6 +13,7 @@ type config struct {
 	HTTPPort       string
 	RedisHost      string
 	KafkaHost      string
+	KafkaSync      bool
 	TokenSecret    []byte
 	AllowedSources []string
 }
@@ -23,6 +25,7 @@ func InitializeConfig() {
 		HTTPPort:       application.ReadEnvWithFallback("HTTP_PORT", "8080"),
 		RedisHost:      application.ReadEnv("REDIS_HOST"),
 		KafkaHost:      application.ReadEnv("KAFKA_HOST"),
+		KafkaSync:      os.Getenv("KAFKA_SYNC") == "1",
 		TokenSecret:    parseTokenSecret(application.ReadEnv("TOKEN_SECRET")),
 		AllowedSources: parseAllowedSources(application.ReadEnv("ALLOWED_SOURCES")),
 	}
