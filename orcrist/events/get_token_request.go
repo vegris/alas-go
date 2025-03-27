@@ -27,6 +27,13 @@ type deviceInfo struct {
 	DeviceManufacturer string      `json:"device_manufacturer"`
 }
 
+type Metadata struct {
+	OS                 string `json:"os"`
+	OSVersion          string `json:"os_version"`
+	DeviceModel        string `json:"device_model"`
+	DeviceManufacturer string `json:"device_manufacturer"`
+}
+
 //go:embed get_token_request.json
 var schemaFS embed.FS
 var getTokenRequestSchema *jsonschema.Schema
@@ -64,4 +71,15 @@ func ParseGetTokenRequest(body []byte) (*GetTokenRequest, error) {
 	}
 
 	return &event, nil
+}
+
+func GetMetadata(request *GetTokenRequest) *Metadata {
+	d := request.DeviceInfo
+
+	return &Metadata{
+		OS:                 d.OS,
+		OSVersion:          d.OSVersion,
+		DeviceModel:        d.DeviceModel,
+		DeviceManufacturer: d.DeviceManufacturer,
+	}
 }

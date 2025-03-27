@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"time"
@@ -92,11 +93,18 @@ func getOrCreateDevice(ctx context.Context, tx pgx.Tx, request *events.GetTokenR
 		return
 	}
 
+	metadata, err := json.Marshal(events.GetMetadata(request))
+	if err != nil {
+		// This should not happen
+		log.Fatalf("Failed to encode metadata: %v", err)
+		return
+	}
+
 	params := repo.CreateDeviceParams{
 		DeviceID:         genUUID(),
 		Source:           request.EventSource,
 		ExternalDeviceID: request.DeviceInfo.DeviceID,
-		// TODO: pass metadata here
+		Metadata:         metadata,
 	}
 	device, err = q.CreateDevice(ctx, params)
 	if err != nil {
