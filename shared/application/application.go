@@ -22,15 +22,15 @@ func BlockUntilInterrupt() {
 	log.Println("Received stop signal, initiating shutdown")
 }
 
-func StartHTTPServer(handlers HTTPHandlers) *http.Server {
-	server := &http.Server{Addr: ":8080"}
+func StartHTTPServer(port string, handlers HTTPHandlers) *http.Server {
+	server := &http.Server{Addr: ":" + port}
 
 	for route, handler := range handlers {
 		http.HandleFunc(route, handler)
 	}
 
 	go func() {
-		log.Println("Starting HTTP server on http://localhost:8080")
+		log.Printf("Starting HTTP server on http://localhost:%v", port)
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("HTTP server error: %v", err)
 		}
@@ -69,5 +69,23 @@ func ShutdownRedis(r *redis.Client) {
 		log.Println("Redis client successfully closed!")
 	} else {
 		log.Printf("Failed to close Redis client: %v", err)
+	}
+}
+
+func ReadEnv(name string) string {
+	value, ok := os.LookupEnv(name)
+	if !ok {
+		log.Fatalf("%s environment variable is not set", name)
+	}
+	return value
+}
+
+func ReadEnvWithFallback(name string, fallback string) string {
+	value, ok := os.LookupEnv(name)
+
+	if ok {
+		return value
+	} else {
+		return fallback
 	}
 }

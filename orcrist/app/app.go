@@ -54,7 +54,7 @@ func Start(app *App) {
 	Kafka = k.Writer
 	defer application.ShutdownKafka(k)
 
-	httpServer := application.StartHTTPServer(app.HTTPRoutes)
+	httpServer := application.StartHTTPServer(Config.HTTPPort, app.HTTPRoutes)
 	defer application.ShutdownHTTPServer(httpServer)
 
 	application.BlockUntilInterrupt()

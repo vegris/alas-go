@@ -2,12 +2,13 @@ package app
 
 import (
 	"log"
-	"os"
 
+	"github.com/vegris/alas-go/shared/application"
 	"github.com/vegris/alas-go/shared/token"
 )
 
 type config struct {
+	HTTPPort     string
 	RedisHost    string
 	PostgresHost string
 	KafkaHost    string
@@ -18,19 +19,12 @@ var Config *config
 
 func InitializeConfig() {
 	Config = &config{
-		RedisHost:    readEnv("REDIS_HOST"),
-		PostgresHost: readEnv("POSTGRES_HOST"),
-		KafkaHost:    readEnv("KAFKA_HOST"),
-		TokenSecret:  parseTokenSecret(readEnv("TOKEN_SECRET")),
+		HTTPPort:     application.ReadEnvWithFallback("HTTP_PORT", "8080"),
+		RedisHost:    application.ReadEnv("REDIS_HOST"),
+		PostgresHost: application.ReadEnv("POSTGRES_HOST"),
+		KafkaHost:    application.ReadEnv("KAFKA_HOST"),
+		TokenSecret:  parseTokenSecret(application.ReadEnv("TOKEN_SECRET")),
 	}
-}
-
-func readEnv(name string) string {
-	value, ok := os.LookupEnv(name)
-	if !ok {
-		log.Fatalf("%s environment variable is not set", name)
-	}
-	return value
 }
 
 func parseTokenSecret(value string) []byte {
