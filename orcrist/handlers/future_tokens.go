@@ -38,6 +38,9 @@ func generateFutureTokens(sessionID pgtype.UUID, t *token.Token) error {
 	}
 
 	futureTokens := generateTokensForSessionLifetime(t, expireAt)
+	if len(futureTokens) == 0 {
+		return nil
+	}
 
 	err = sendTokensToKafka(ctx, futureTokens)
 	if err != nil {
