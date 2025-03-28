@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "query.sql"
+    schema: "../orcrist/app/migrations"
+    gen:
+      go:
+        package: "repo"
+        out: "repo"
+        sql_package: "pgx/v5"
