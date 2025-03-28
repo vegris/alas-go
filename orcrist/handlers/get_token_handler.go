@@ -59,7 +59,7 @@ func HandleGetToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var token *token.Token
-	if oldToken != nil {
+	if oldToken == nil {
 		token = sessions.CreateToken(request)
 	} else {
 		token = sessions.RefreshToken(request, oldToken)

@@ -1,6 +1,6 @@
 -- name: GetAliveSession :one
 SELECT * FROM sessions
-WHERE session_id = $1 AND ends_at < CURRENT_TIMESTAMP;
+WHERE session_id = $1 AND ends_at > CURRENT_TIMESTAMP;
 
 -- name: RefreshSession :one
 UPDATE sessions

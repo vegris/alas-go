@@ -70,7 +70,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 
 const getAliveSession = `-- name: GetAliveSession :one
 SELECT session_id, device_id, ends_at, inserted_at, updated_at FROM sessions
-WHERE session_id = $1 AND ends_at < CURRENT_TIMESTAMP
+WHERE session_id = $1 AND ends_at > CURRENT_TIMESTAMP
 `
 
 func (q *Queries) GetAliveSession(ctx context.Context, sessionID pgtype.UUID) (Session, error) {

@@ -23,7 +23,7 @@ var sessionDurationSecs = int64(sessionDuration.Seconds())
 func RefreshToken(request *events.GetTokenRequest, t *token.Token) *token.Token {
 	ctx := context.Background()
 
-	session := refreshExistingSession(ctx, request.SessionID)
+	session := refreshExistingSession(ctx, pgtype.UUID{Bytes: t.SessionID, Valid: true})
 	if session == nil {
 		session = createSession(ctx, request)
 	}
