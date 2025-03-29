@@ -164,11 +164,14 @@ func refreshToken(token *token.Token) (string, int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	now := time.Now().Unix()
-	minTokenTTL := now + int64(time.Minute)
-	maxTokenTTL := now + int64(time.Minute)*2
+	now := time.Now()
+	minTokenTTL := now.Add(time.Minute).Unix()
+	maxTokenTTL := now.Add(time.Minute * 2).Unix()
 
 	zrange := &redis.ZRangeBy{Min: strconv.FormatInt(minTokenTTL, 10), Max: strconv.FormatInt(maxTokenTTL, 10), Offset: 0, Count: 1}
+
+	log.Printf("SessionID: %+v", token.SessionID)
+	log.Printf("Zrange: %+v", zrange)
 
 	vals, err := app.Redis.ZRangeByScoreWithScores(ctx, token.SessionID.String(), zrange).Result()
 	if err != nil {
@@ -182,7 +185,7 @@ func refreshToken(token *token.Token) (string, int64, error) {
 	encodedToken := vals[0].Member.(string)
 	tokenExpireAt := int64(vals[0].Score)
 
-	ttl := tokenExpireAt - now
+	ttl := tokenExpireAt - now.Unix()
 
 	return encodedToken, ttl, nil
 }
