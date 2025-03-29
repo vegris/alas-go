@@ -1,4 +1,11 @@
-.PHONY: format check
+SHELL := /bin/bash
+
+.PHONY: test format check
+
+SETUP_ENV := set -a && source ../.env && set +a
+
+test:
+	$(SETUP_ENV) && go test ./...
 
 format:
 	go fmt ./...

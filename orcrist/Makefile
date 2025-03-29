@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: build run test format check
+.PHONY: build run format check
 
 SETUP_ENV := set -a && source ../.env && set +a
 
@@ -9,9 +9,6 @@ build:
 
 run: build
 	$(SETUP_ENV) && ./orcrist
-
-test:
-	$(SETUP_ENV) && go test ./...
 
 format:
 	go fmt ./...
